@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Batch Processing Script for Multiple Pokémon
+# Fetches data for multiple Pokémon and saves to separate files
+
+# List of Pokémon to fetch
+POKEMON_LIST=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# API base URL
+API_BASE_URL="https://pokeapi.co/api/v2/pokemon"
+
+# Output directory
+OUTPUT_DIR="pokemon_data"
+
+# Delay between requests (in seconds) to avoid rate limiting
+DELAY=1
+
+echo "Starting batch fetch for ${#POKEMON_LIST[@]} Pokémon..."
+echo
+
+# Loop through each Pokémon
+for pokemon in "${POKEMON_LIST[@]}"; do
+    echo "Fetching data for $pokemon..."
+    
+    # Construct API URL and output file path
+    API_URL="$API_BASE_URL/$pokemon"
+    OUTPUT_FILE="$OUTPUT_DIR/${pokemon}.json"
+    
+    # Make API request
+    if curl -s "$API_URL" -o "$OUTPUT_FILE"; then
+        # Check if the response is valid JSON (not an error page)
+        if jq empty "$OUTPUT_FILE" 2>/dev/null; then
+            echo "Saved data to $OUTPUT_FILE ✅"
+        else
+            echo "Error: Invalid response for $pokemon ❌"
+            rm -f "$OUTPUT_FILE"  # Remove invalid file
+        fi
+    else
+        echo "Error: Failed to fetch data for $pokemon ❌"
+    fi
+    
+    # Add delay to avoid rate limiting (except for the last iteration)
+    if [ "$pokemon" != "${POKEMON_LIST[-1]}" ]; then
+        sleep $DELAY
+    fi
+done
+
+echo
+echo "Batch processing completed!"
