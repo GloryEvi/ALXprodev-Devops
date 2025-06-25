@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Data Extraction Script for Pokémon API Response
+# Extracts name, height, weight, and type from data.json
+
+# Input file
+JSON_FILE="data.json"
+
+# Check if data.json exists
+if [ ! -f "$JSON_FILE" ]; then
+    echo "Error: $JSON_FILE not found. Please run the API script first."
+    exit 1
+fi
+
+echo "Extracting Pokémon data from $JSON_FILE..."
+
+# Extract data using jq
+NAME=$(jq -r '.name' "$JSON_FILE")
+HEIGHT=$(jq -r '.height' "$JSON_FILE")
+WEIGHT=$(jq -r '.weight' "$JSON_FILE")
+TYPE=$(jq -r '.types[0].type.name' "$JSON_FILE")
+
+# Convert height from decimeters to meters (API returns height in decimeters)
+HEIGHT_M=$(echo "scale=1; $HEIGHT / 10" | bc | sed 's/^\./0./')
+
+# Convert weight from hectograms to kilograms (API returns weight in hectograms)
+WEIGHT_KG=$(echo "$WEIGHT / 10" | bc)
+
+# Capitalize first letter of name and type
+NAME_FORMATTED=$(echo "$NAME" | sed 's/./\U&/')
+TYPE_FORMATTED=$(echo "$TYPE" | sed 's/./\U&/')
+
+# Output in required format
+echo "$NAME_FORMATTED is of type $TYPE_FORMATTED, weighs ${WEIGHT_KG}kg, and is ${HEIGHT_M}m tall."
