@@ -18,26 +18,50 @@ DELAY=1
 echo "Starting batch fetch for ${#POKEMON_LIST[@]} Pokémon..."
 echo
 
+# Function to fetch Pokemon data with retry logic
+fetch_pokemon_with_retry() {
+    local pokemon=$1
+    local max_retries=3
+    local retry_count=0
+    local success=false
+    
+    API_URL="$API_BASE_URL/$pokemon"
+    OUTPUT_FILE="$OUTPUT_DIR/${pokemon}.json"
+    
+    while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
+        retry_count=$((retry_count + 1))
+        
+        if [ $retry_count -gt 1 ]; then
+            echo "  Retry attempt $retry_count for $pokemon..."
+            sleep 2  # Wait longer between retries
+        fi
+        
+        # Make API request with timeout
+        if curl -s --max-time 10 --retry 0 "$API_URL" -o "$OUTPUT_FILE" 2>/dev/null; then
+            # Check if the response is valid JSON and contains expected data
+            if jq -e '.name' "$OUTPUT_FILE" >/dev/null 2>&1; then
+                echo "Saved data to $OUTPUT_FILE ✅"
+                success=true
+            else
+                echo "  Invalid response received for $pokemon (attempt $retry_count)"
+                rm -f "$OUTPUT_FILE"
+            fi
+        else
+            echo "  Network error for $pokemon (attempt $retry_count)"
+        fi
+    done
+    
+    if [ "$success" = false ]; then
+        echo "❌ Failed to fetch $pokemon after $max_retries attempts"
+        echo "$(date): Failed to fetch $pokemon after $max_retries attempts" >> errors.log
+    fi
+}
+
 # Loop through each Pokémon
 for pokemon in "${POKEMON_LIST[@]}"; do
     echo "Fetching data for $pokemon..."
     
-    # Construct API URL and output file path
-    API_URL="$API_BASE_URL/$pokemon"
-    OUTPUT_FILE="$OUTPUT_DIR/${pokemon}.json"
-    
-    # Make API request
-    if curl -s "$API_URL" -o "$OUTPUT_FILE"; then
-        # Check if the response is valid JSON (not an error page)
-        if jq empty "$OUTPUT_FILE" 2>/dev/null; then
-            echo "Saved data to $OUTPUT_FILE ✅"
-        else
-            echo "Error: Invalid response for $pokemon ❌"
-            rm -f "$OUTPUT_FILE"  # Remove invalid file
-        fi
-    else
-        echo "Error: Failed to fetch data for $pokemon ❌"
-    fi
+    fetch_pokemon_with_retry "$pokemon"
     
     # Add delay to avoid rate limiting (except for the last iteration)
     if [ "$pokemon" != "${POKEMON_LIST[-1]}" ]; then
