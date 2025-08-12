@@ -33,13 +33,13 @@ fetch_pokemon() {
     if curl -s --max-time 10 "$api_url" -o "$output_file" 2>/dev/null; then
         # Verify the response is valid JSON
         if jq -e '.name' "$output_file" >/dev/null 2>&1; then
-            echo "✅ Completed: $pokemon -> $output_file"
+            echo "Completed: $pokemon -> $output_file"
         else
-            echo "❌ Invalid response for $pokemon"
+            echo "Invalid response for $pokemon"
             rm -f "$output_file"
         fi
     else
-        echo "❌ Failed to fetch $pokemon"
+        echo "Failed to fetch $pokemon"
     fi
 }
 
@@ -50,8 +50,16 @@ for pokemon in "${POKEMON_LIST[@]}"; do
 done
 
 echo "All fetch processes started in parallel..."
+
+# Show current background jobs
+echo "Current background jobs:"
+jobs
+
 echo "Waiting for all processes to complete..."
 echo
+
+# Set up signal handler to kill all jobs if needed
+trap 'echo "Terminating all background jobs..."; kill $(jobs -p) 2>/dev/null; exit 1' SIGINT SIGTERM
 
 # Wait for all background processes to complete
 for pid in "${PIDS[@]}"; do
@@ -68,10 +76,10 @@ total=${#POKEMON_LIST[@]}
 
 for pokemon in "${POKEMON_LIST[@]}"; do
     if [ -f "$OUTPUT_DIR/${pokemon}.json" ]; then
-        echo "  ✅ $pokemon"
+        echo "  Success: $pokemon"
         ((successful++))
     else
-        echo "  ❌ $pokemon"
+        echo "  Failed: $pokemon"
     fi
 done
 
