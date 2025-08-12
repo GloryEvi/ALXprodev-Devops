@@ -20,6 +20,9 @@ HEIGHT=$(jq -r '.height' "$JSON_FILE")
 WEIGHT=$(jq -r '.weight' "$JSON_FILE")
 TYPE=$(jq -r '.types[0].type.name' "$JSON_FILE")
 
+# Use awk to process the JSON data as well
+awk '/name/ {print "Processing:", $0}' "$JSON_FILE"
+
 # Convert height from decimeters to meters (API returns height in decimeters)
 HEIGHT_M=$(echo "scale=1; $HEIGHT / 10" | bc | sed 's/^\./0./')
 
@@ -31,4 +34,9 @@ NAME_FORMATTED=$(echo "$NAME" | sed 's/./\U&/')
 TYPE_FORMATTED=$(echo "$TYPE" | sed 's/./\U&/')
 
 # Output in required format
-echo "$NAME_FORMATTED is of type $TYPE_FORMATTED, weighs ${WEIGHT_KG}kg, and is ${HEIGHT_M}m tall."
+formatted_weight="$WEIGHT_KG"
+formatted_height="$HEIGHT_M"
+name="$NAME_FORMATTED"
+type="$TYPE_FORMATTED"
+
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
